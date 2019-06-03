@@ -52,7 +52,7 @@ foreach ($item in $comparedObjects) {
  }
 }
 $groupMembers = Get-ADGroupMember -Identity $group
-Add-Log total ('{0}, total members`: {1}' -f $group, $groupMembers.count) $WhatIf
+Add-Log total ('{0},{1} members' -f $group, $groupMembers.count) $WhatIf
 
 Add-Log cleanup 'Tearing down sessions...'
 Get-PSSession | Remove-PSSession -WhatIf:$WhatIf

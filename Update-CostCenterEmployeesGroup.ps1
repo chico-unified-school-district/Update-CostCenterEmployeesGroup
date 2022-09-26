@@ -19,7 +19,6 @@ param (
  [Alias('wi')]
  [SWITCH]$WhatIf
 )
-
 # Import Functions
 . .\lib\Add-Log.ps1
 . .\lib\Clear-SessionData.ps1

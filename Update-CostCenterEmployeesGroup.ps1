@@ -10,12 +10,13 @@ Scans users who are members of groups beginning with "CN=UN-*"
 #>
 [cmdletbinding()]
 param (
- [Parameter(Position = 0, Mandatory = $True)]
+ [Parameter(Mandatory = $True)]
  [Alias('DCs')]
  [string[]]$DomainControllers,
- [Parameter(Position = 1, Mandatory = $True)]
+ [Parameter(Mandatory = $True)]
  [System.Management.Automation.PSCredential]$ADCredential,
- [Parameter(Position = 3, Mandatory = $false)]
+ [Parameter(Mandatory = $False)]
+ [string]$OrgUnit,
  [Alias('wi')]
  [SWITCH]$WhatIf
 )
@@ -33,10 +34,8 @@ $dc = Select-DomainController $DomainControllers
 $adCmdLets = 'Get-ADUser', 'Get-ADGroupMember', 'Add-ADGroupMember', 'Remove-ADGroupMember'
 New-ADSession -dc $dc -cmdlets $adCmdLets -cred $ADCredential
 
-
-$userOU = 'OU=Domain_Root,DC=chico,DC=usd'
 # Filter out 'New Employee Accounts' OU and no UN-* group members
-$userObjs = Get-ADUser -Filter * -SearchBase $userOU -Properties 'memberof' |
+$userObjs = Get-ADUser -Filter * -SearchBase $OrgUnit -Properties 'memberof' |
 Where-Object { ($_.memberof -match "CN=UN-*") -and
  ($_.distinguishedName -notlike "*New Employee Accounts*") }
 

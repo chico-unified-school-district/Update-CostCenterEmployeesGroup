@@ -18,47 +18,38 @@ param (
 function Get-EligibleUsers ($ou, [PSCredential]$cred) {
  process {
   Get-ADUser -Filter * -SearchBase $ou -Properties 'memberof' -Credential $cred |
-   Where-Object { ($_.memberof -match 'CN=UN-*') -and
+   Where-Object { ($_.MemberOf -match 'CN=UN-*') -and
     ($_.distinguishedName -notlike '*New Employee Accounts*') }
  }
 }
 
-function Update-GroupMembership ([PSCredential]$cred) {
+function Update-GroupMembership ($group, [PSCredential]$cred) {
  process {
-  $action = if ($_.SideIndicator -eq '=>') { 'remove' } else { 'add' }
-  $logPrefix = if ($WhatIf) { '[WhatIf] ' } else { '' }
-  $msgVars = $logPrefix, $MyInvocation.MyCommand.Name, $action, $group, $_.SamAccountName
-  Write-Host ('{0}{1},{2},{3},{4}' -f $msgVars) -Fore Blue
-
   if ($_.SideIndicator -eq '=>') {
    Remove-ADGroupMember -Identity $group -Members $_.SamAccountName -Credential $cred -Confirm:$false -WhatIf:$WhatIf
+   return (Write-Host ('{0},Remove,{1},{2}' -f $MyInvocation.MyCommand.Name, $group, $_.SamAccountName) -F DarkYellow)
   }
-  else {
-   Add-ADGroupMember -Identity $group -Members $_.SamAccountName -Credential $cred -Confirm:$false -WhatIf:$WhatIf
-  }
+  Add-ADGroupMember -Identity $group -Members $_.SamAccountName -Credential $cred -Confirm:$false -WhatIf:$WhatIf
+  Write-Host ('{0},Add,{1},{2}' -f $MyInvocation.MyCommand.Name, $group, $_.SamAccountName) -f Blue
  }
 }
 
-function Show-GroupMemberTotal ([PSCredential]$cred) {
- $groupMembers = Get-ADGroupMember -Identity $group -Credential $cred
- $logPrefix = if ($WhatIf) { '[WhatIf] ' } else { '' }
- $msgVars = $logPrefix, $MyInvocation.MyCommand.Name, $group, $groupMembers.count
- Write-Host ('{0}{1},{2},{3} members' -f $msgVars) -Fore Blue
-}
-
 # ================================= main ==================================
+Show-BlockInfo start
+
 Import-Module -Name CommonScriptFunctions -Cmdlet Show-BlockInfo, Show-TestRun
 $adCmdlets = 'Get-ADUser', 'Get-ADGroupMember', 'Add-ADGroupMember', 'Remove-ADGroupMember'
 Import-Module -Name ActiveDirectory -Cmdlet $adCmdlets -WarningAction SilentlyContinue -ErrorAction Stop
+
 Show-BlockInfo main
 
 if ($WhatIf) { Show-TestRun }
+
 $group = 'Cost-Center-Employees'
 $groupUsers = Get-ADGroupMember -Identity $group -Credential $ADCredential
-Get-EligibleUsers -ou $OrgUnit -cred $ADCredential |
- Compare-Object -DifferenceObject $groupUsers -Property SamAccountName |
-  Update-GroupMembership -cred $ADCredential
-Show-GroupMemberTotal -cred $ADCredential
+$eligibleUsers = Get-EligibleUsers -ou $OrgUnit -cred $ADCredential
+Compare-Object -ReferenceObject $eligibleUsers -DifferenceObject $groupUsers -Property SamAccountName |
+ Update-GroupMembership -group $group -cred $ADCredential
 
 if ($WhatIf) { Show-TestRun }
 Show-BlockInfo end
